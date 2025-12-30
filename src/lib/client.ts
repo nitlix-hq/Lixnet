@@ -9,7 +9,8 @@ export default class LixnetClient<Events extends LXN_ServerClient_EventType> {
 
     public async call<K extends keyof Events>(
         event: K,
-        input: FunctionInput<Events[K]>
+        input: FunctionInput<Events[K]>,
+        options: RequestInit = {}
     ): Promise<Awaited<ReturnType<Events[K]>>> {
         const response = await fetch(this.rpcUrl, {
             method: "POST",
@@ -17,6 +18,7 @@ export default class LixnetClient<Events extends LXN_ServerClient_EventType> {
                 "Content-Type": "application/json",
             },
             body: JSON.stringify({ event, input }),
+            ...options,
         });
 
         const json = await response.json();

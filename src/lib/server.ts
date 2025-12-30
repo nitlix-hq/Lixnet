@@ -5,6 +5,7 @@ import type {
     FunctionInput,
     LXNServerHandler,
     LXN_ServerClient_EventType,
+    LXN_ServerClient_Request,
 } from "./types";
 
 type LXNServerEventInput<
@@ -28,7 +29,7 @@ export default class LixnetServer<Events extends LXN_ServerClient_EventType> {
     public constructor({
         debugLog = false,
         logger,
-        jsonResponseMaker = Response.json,
+        jsonResponseMaker = (data, init) => Response.json(data, init),
     }: {
         debugLog?: boolean;
         logger?: DebugLogger;
@@ -100,11 +101,27 @@ export default class LixnetServer<Events extends LXN_ServerClient_EventType> {
                 : jsonData.input;
 
             try {
+                let additionalInit: ResponseInit = {};
+                const newRequest: LXN_ServerClient_Request = {
+                    ...request,
+                    setAdditionalInit: (init) => {
+                        additionalInit = init;
+                    },
+                };
+
                 const result = await event.handler({
-                    request,
+                    request: newRequest,
                     ...validatedInput,
                 });
-                return this.jsonResponseMaker({ data: result });
+                if (result instanceof Response) {
+                    return result;
+                }
+                return this.jsonResponseMaker(
+                    {
+                        data: result.headers,
+                    },
+                    additionalInit
+                );
             } catch (error) {
                 return this.jsonResponseMaker(
                     {
