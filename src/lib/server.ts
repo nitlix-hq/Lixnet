@@ -14,7 +14,7 @@ type LXNServerEventInput<
 > = {
     event: TName;
     handler: LXNServerHandler<
-        FunctionInput<Events[TName]> & { request: Request }
+        FunctionInput<Events[TName]> & { request: LXN_ServerClient_Request }
     >;
     schema?: z.ZodSchema<any>;
 };
