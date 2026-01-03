@@ -1,5 +1,9 @@
 import type { FunctionInput, LXN_ServerClient_EventType } from "./types";
 
+type ExtractRPCResponse<T> = T extends (...args: any) => infer R
+    ? Awaited<R>
+    : never;
+
 export default class LixnetClient<Events extends LXN_ServerClient_EventType> {
     private rpcUrl: string;
 
@@ -11,7 +15,7 @@ export default class LixnetClient<Events extends LXN_ServerClient_EventType> {
         event: K,
         input: FunctionInput<Events[K]>,
         options: RequestInit = {}
-    ): Promise<Awaited<ReturnType<Events[K]>>> {
+    ): Promise<ExtractRPCResponse<Events[K]>> {
         const response = await fetch(this.rpcUrl, {
             method: "POST",
             headers: {

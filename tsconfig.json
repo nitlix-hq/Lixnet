@@ -26,5 +26,7 @@
         /* Additional Worker-Specific Settings */
         "noEmitOnError": true /* Prevent emitting files if there are errors */,
         "allowSyntheticDefaultImports": true /* Allow default imports for ESM compatibility */
-    }
+    },
+
+    "exclude": ["tests"]
 }
