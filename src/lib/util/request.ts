@@ -146,7 +146,8 @@ export type LixnetRequest = Omit<Request, "headers"> & {
     headers(): ReadonlyHeaders;
 };
 
-function wrapLixnetRequest(request: Request): LixnetRequest {
+/** Used by the server only; not part of the public package API. */
+export function wrapLixnetRequest(request: Request): LixnetRequest {
     const snapshot = new Headers(request.headers);
     return new Proxy(request, {
         get(target, prop, receiver) {
@@ -163,9 +164,4 @@ function wrapLixnetRequest(request: Request): LixnetRequest {
             return Reflect.get(target, prop, receiver);
         },
     }) as unknown as LixnetRequest;
-}
-
-
-export default function (request: Request): LixnetRequest {
-    return wrapLixnetRequest(request);
 }

@@ -4,8 +4,8 @@ import LixnetPeer from "./lib/peer";
 import { LixnetResponse } from "./lib/util/response";
 
 export { LixnetServer, LixnetClient, LixnetPeer, LixnetResponse };
-export { default as LixnetRequest } from "./lib/util/request";
 export type {
+    LixnetRequest,
     ReadonlyHeaders,
     ReadonlyRequestCookies,
     RequestCookie,
@@ -15,4 +15,5 @@ export type {
     LXNServerHandler,
     FunctionInput,
     LXN_ServerClient_Request,
+    LixnetServerInjections,
 } from "./lib/types";

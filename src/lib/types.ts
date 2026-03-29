@@ -26,7 +26,7 @@ export type LXN_ServerClient_EventType = object;
 /** The inbound request passed to handlers (Next.js–style `cookies()` / `headers()`). */
 export type { LixnetRequest as LXN_ServerClient_Request } from "./util/request";
 
-export type LixnetServer_HandlerInjections = {
+export type LixnetServerInjections = {
     request: LixnetRequest;
     response: LixnetResponse;
 }
