@@ -20,6 +20,5 @@ export type LXNServerHandler<Input, Output> = (
 
 export type LXN_ServerClient_EventType = object;
 
-export type LXN_ServerClient_Request = Request & {
-    setAdditionalInit: (init: ResponseInit) => void;
-};
+/** The inbound `Request` passed to handlers (headers, URL, method, etc.). */
+export type LXN_ServerClient_Request = Request;

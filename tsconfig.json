@@ -1,11 +1,11 @@
 {
     "compilerOptions": {
         /* Language and Environment */
-        "target": "es2020" /* Use a modern ES target for better compatibility with Workers */,
+        "target": "esnext" /* Latest stable emit; Workers runtimes support modern JS */,
         "lib": [
-            "es2020",
+            "esnext",
             "webworker"
-        ] /* Include WebWorker APIs for Cloudflare Workers */,
+        ] /* ES + WebWorker APIs for Cloudflare Workers */,
 
         /* Modules */
         "module": "esnext" /* Output ES modules instead of CommonJS */,
@@ -28,5 +28,5 @@
         "allowSyntheticDefaultImports": true /* Allow default imports for ESM compatibility */
     },
 
-    "exclude": ["tests"]
+    "exclude": ["tests", "dist"]
 }

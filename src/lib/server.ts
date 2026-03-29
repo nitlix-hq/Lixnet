@@ -8,6 +8,8 @@ import type {
     LXN_ServerClient_EventType,
     LXN_ServerClient_Request,
 } from "./types";
+import LixnetResponse from "./util/response";
+import defaultFormatter from "./util/formatter";
 
 type LXNServerEventInput<
     Events extends LXN_ServerClient_EventType,
@@ -26,20 +28,20 @@ export default class LixnetServer<Events extends LXN_ServerClient_EventType> {
         {};
     private logger: DebugLogger = LixnetLog;
     private debugLog: boolean = false;
-    private jsonResponseMaker: (data: any, init?: ResponseInit) => Response;
+    private formatter: (this: LixnetResponse) => Response;
 
     public constructor({
         debugLog = false,
         logger,
-        jsonResponseMaker = (data, init) => Response.json(data, init),
+        formatter,
     }: {
         debugLog?: boolean;
         logger?: DebugLogger;
-        jsonResponseMaker?: (data: any, init?: ResponseInit) => Response;
+        formatter?: (this: LixnetResponse) => Response;
     }) {
         this.debugLog = debugLog;
         logger ? (this.logger = logger) : "";
-        this.jsonResponseMaker = jsonResponseMaker;
+        this.formatter = formatter ?? defaultFormatter;
     }
 
     public on<K extends keyof Events & string>(
@@ -57,46 +59,46 @@ export default class LixnetServer<Events extends LXN_ServerClient_EventType> {
     public async handle(request: Request) {
         const requestClone = request.clone();
 
+        const response = new LixnetResponse({ formatter: this.formatter });
+
         let jsonData;
         try {
             jsonData = (await request.json()) as any;
         } catch (error) {
             this.debugLog
                 ? this.logger({
-                      error: true,
-                      message: "Invalid JSON",
-                  })
+                    error: true,
+                    message: "Invalid JSON",
+                })
                 : "";
-            return this.jsonResponseMaker(
-                {
-                    error: "Invalid JSON",
-                },
-                { status: 400 }
-            );
+
+            response.error("Invalid JSON");
+            return response.format();
+        }
+
+        if (
+            jsonData === null ||
+            typeof jsonData !== "object" ||
+            Array.isArray(jsonData)
+        ) {
+            response.error("Invalid request body");
+            return response.format();
         }
 
         if (!jsonData.event) {
-            return this.jsonResponseMaker(
-                { error: "Event not found" },
-                { status: 400 }
-            );
+            response.error("Event not found");
+            return response.format();
         }
 
-        if (!jsonData.input) {
-            return this.jsonResponseMaker(
-                { error: "Input not found" },
-                { status: 400 }
-            );
+        if (!("input" in jsonData)) {
+            response.error("Input not found");
+            return response.format();
         }
 
         const event = this.events[jsonData.event];
         if (!event) {
-            return this.jsonResponseMaker(
-                {
-                    error: "Event not found",
-                },
-                { status: 404 }
-            );
+            response.error("Event not found");
+            return response.format();
         }
 
         try {
@@ -105,46 +107,31 @@ export default class LixnetServer<Events extends LXN_ServerClient_EventType> {
                 : jsonData.input;
 
             try {
-                let additionalInit: ResponseInit = {};
-                const clonedReq: any = new Request(requestClone as any);
-                clonedReq.setAdditionalInit = (init: ResponseInit) => {
-                    additionalInit = init;
-                };
-                const newRequest: LXN_ServerClient_Request = clonedReq;
+                const newRequest: LXN_ServerClient_Request = requestClone;
 
-                const result = await event.handler({
-                    request: newRequest,
+                const data = await event.handler({
                     ...validatedInput,
+                    request: newRequest,
+                    response: response,
                 });
-                if (result instanceof Response) {
-                    return result;
+
+                //check data isnt void/null/undefined
+                if (!(data === undefined || data === null)) {
+                    response.data(data);
                 }
-                return this.jsonResponseMaker(
-                    {
-                        data: result,
-                    },
-                    additionalInit
-                );
+
+                return response.format();
             } catch (error) {
-                return this.jsonResponseMaker(
-                    {
-                        error: "Handler error",
-                        details: error,
-                    },
-                    { status: 500 }
-                );
+                response.error("Handler error");
+                return response.format();
             }
         } catch (error) {
             if (error instanceof z.ZodError) {
-                return this.jsonResponseMaker(
-                    {
-                        error: "Invalid input",
-                        details: (error as z.ZodError).issues,
-                    },
-                    { status: 400 }
-                );
+                response.error("Invalid input");
+                return response.format();
             }
-            throw error;
+            response.error("Invalid input");
+            return response.format();
         }
     }
 }
