@@ -142,7 +142,7 @@ export default class LixnetServer<Events extends LXN_ServerClient_EventType> {
                 response.error("Invalid input");
                 return response.format();
             }
-            response.error("Invalid input");
+            response.error("Handler error");
             return response.format();
         }
     }

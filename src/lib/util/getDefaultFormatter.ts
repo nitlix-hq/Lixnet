@@ -32,7 +32,7 @@ export default function (defaultHeaders: Record<string, string>) {
             }
             else if (cookie.type === "delete") {
                 const opts = (cookie.options ?? {}) as any;
-                const parts: string[] = [`${cookieName}=`,"Max-Age=0"];
+                const parts: string[] = [`${cookieName}=`, "Max-Age=0"];
                 parts.push(`Path=${opts.path ?? "/"}`);
                 if (opts.domain) parts.push(`Domain=${opts.domain}`);
                 if (opts.httpOnly) parts.push("HttpOnly");
@@ -45,12 +45,23 @@ export default function (defaultHeaders: Record<string, string>) {
             }
         }
 
+        if (this.responseError) {
+            return Response.json({
+                error: this.responseError,
+            }, {
+                status: this.responseCode ?? 500,
+                headers: headers,
+            });
+        }
+
         return Response.json({
             data: this.responseData,
         }, {
             status: this.responseCode ?? 200,
             headers: headers,
         });
+
+
     };
 
     return formatter;
