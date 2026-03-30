@@ -1,7 +1,15 @@
-type CookieOptions = {
+export type CookieOptions = {
     domain?: string;
     path?: string;
     maxAge?: number;
+    httpOnly?: boolean;
+    secure?: boolean;
+    sameSite?: 'lax' | 'strict' | 'none';
+};
+
+export type CookieDeleteOptions = {
+    domain?: string;
+    path?: string;
     httpOnly?: boolean;
     secure?: boolean;
     sameSite?: 'lax' | 'strict' | 'none';
@@ -12,10 +20,11 @@ export class LixnetResponse {
     public responseError: string | null = null;
     public responseCode: number = 200;
     public responseHeaders: Record<string, string> = {};
+    public responseHeaderDeletes: Set<string> = new Set();
     public responseCookies: Record<string, {
         type: "value" | "delete";
         value?: string;
-        options?: CookieOptions;
+        options?: CookieOptions | CookieDeleteOptions;
     }> = {};
 
     public constructor({ formatter }: { formatter: (this: LixnetResponse) => Response }) {
@@ -29,6 +38,13 @@ export class LixnetResponse {
 
     public header(headerName: string, headerValue: string): void {
         this.responseHeaders[headerName] = headerValue;
+        this.responseHeaderDeletes.delete(headerName.toLowerCase());
+    }
+
+    public deleteHeader(headerName: string): void {
+        delete this.responseHeaders[headerName];
+        delete this.responseHeaders[headerName.toLowerCase()];
+        this.responseHeaderDeletes.add(headerName.toLowerCase());
     }
 
     public error(error: string): void {
@@ -45,7 +61,7 @@ export class LixnetResponse {
         }
     }
 
-    public cookie(cookieName: string, cookieValue: string, cookieOptions: CookieOptions): void {
+    public cookie(cookieName: string, cookieValue: string, cookieOptions?: CookieOptions): void {
         this.responseCookies[cookieName] = {
             type: "value",
             value: cookieValue,
@@ -53,9 +69,10 @@ export class LixnetResponse {
         };
     }
 
-    public deleteCookie(cookieName: string): void {
+    public deleteCookie(cookieName: string, options?: CookieDeleteOptions): void {
         this.responseCookies[cookieName] = {
             type: "delete",
+            options,
         };
     }
 

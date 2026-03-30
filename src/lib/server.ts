@@ -110,7 +110,15 @@ export default class LixnetServer<Events extends LXN_ServerClient_EventType> {
 
             try {
                 const newRequest: LixnetRequest =
-                    wrapLixnetRequest(requestClone);
+                    wrapLixnetRequest(requestClone, {
+                        header: response.header.bind(response),
+                        deleteHeader: response.deleteHeader.bind(response),
+                        cookie: response.cookie.bind(response),
+                        deleteCookie: response.deleteCookie.bind(response),
+                        responseHeaders: response.responseHeaders,
+                        responseHeaderDeletes: response.responseHeaderDeletes,
+                        responseCookies: response.responseCookies,
+                    });
 
 
                 const data = await event.handler({

@@ -35,9 +35,28 @@ function parseCookieHeader(header: string | null): Map<string, string> {
  */
 export class ReadonlyRequestCookies {
     private readonly map: Map<string, string>;
+    private readonly mut?: {
+        setCookie: (name: string, value: string, options?: unknown) => void;
+        deleteCookie: (name: string, options?: unknown) => void;
+        getStaged: () => Record<
+            string,
+            { type: "value" | "delete"; value?: string; options?: unknown }
+        >;
+    };
 
-    constructor(cookieHeader: string | null) {
+    constructor(
+        cookieHeader: string | null,
+        mut?: {
+            setCookie: (name: string, value: string, options?: unknown) => void;
+            deleteCookie: (name: string, options?: unknown) => void;
+            getStaged: () => Record<
+                string,
+                { type: "value" | "delete"; value?: string; options?: unknown }
+            >;
+        }
+    ) {
         this.map = parseCookieHeader(cookieHeader);
+        this.mut = mut;
     }
 
     get size(): number {
@@ -45,6 +64,11 @@ export class ReadonlyRequestCookies {
     }
 
     get(name: string): RequestCookie | undefined {
+        const staged = this.mut?.getStaged()?.[name];
+        if (staged) {
+            if (staged.type === "delete") return undefined;
+            return { name, value: staged.value ?? "" };
+        }
         const value = this.map.get(name);
         if (value === undefined) return undefined;
         return { name, value };
@@ -54,10 +78,23 @@ export class ReadonlyRequestCookies {
     getAll(name: string): RequestCookie[];
     getAll(name?: string): RequestCookie[] {
         if (name === undefined) {
-            return [...this.map.entries()].map(([n, value]) => ({
+            const base = [...this.map.entries()].map(([n, value]) => ({
                 name: n,
                 value,
             }));
+            const staged = this.mut?.getStaged?.();
+            if (!staged) return base;
+            const out = new Map(base.map((c) => [c.name, c.value]));
+            for (const [n, v] of Object.entries(staged)) {
+                if (v.type === "delete") out.delete(n);
+                else out.set(n, v.value ?? "");
+            }
+            return [...out.entries()].map(([n, value]) => ({ name: n, value }));
+        }
+        const staged = this.mut?.getStaged()?.[name];
+        if (staged) {
+            if (staged.type === "delete") return [];
+            return [{ name, value: staged.value ?? "" }];
         }
         const value = this.map.get(name);
         if (value === undefined) return [];
@@ -65,11 +102,34 @@ export class ReadonlyRequestCookies {
     }
 
     has(name: string): boolean {
+        const staged = this.mut?.getStaged()?.[name];
+        if (staged) return staged.type !== "delete";
         return this.map.has(name);
     }
 
+    set(name: string, value: string, options?: unknown): void {
+        if (!this.mut) {
+            throw new Error("cookies().set is not available in this context");
+        }
+        this.mut.setCookie(name, value, options);
+    }
+
+    delete(name: string, options?: unknown): void {
+        if (!this.mut) {
+            throw new Error("cookies().delete is not available in this context");
+        }
+        this.mut.deleteCookie(name, options);
+    }
+
     [Symbol.iterator](): IterableIterator<[string, RequestCookie]> {
-        const map = this.map;
+        const map = new Map(this.map);
+        const staged = this.mut?.getStaged?.();
+        if (staged) {
+            for (const [n, v] of Object.entries(staged)) {
+                if (v.type === "delete") map.delete(n);
+                else map.set(n, v.value ?? "");
+            }
+        }
         function* iter(): IterableIterator<[string, RequestCookie]> {
             for (const [n, value] of map.entries()) {
                 yield [n, { name: n, value }];
@@ -85,16 +145,35 @@ export class ReadonlyRequestCookies {
  */
 export class ReadonlyHeaders {
     private readonly h: Headers;
+    private readonly mut?: {
+        setHeader: (name: string, value: string) => void;
+        appendHeader: (name: string, value: string) => void;
+        deleteHeader: (name: string) => void;
+        getStaged: () => Record<string, string>;
+    };
 
-    constructor(headers: Headers) {
+    constructor(
+        headers: Headers,
+        mut?: {
+            setHeader: (name: string, value: string) => void;
+            appendHeader: (name: string, value: string) => void;
+            deleteHeader: (name: string) => void;
+            getStaged: () => Record<string, string>;
+        }
+    ) {
         this.h = new Headers(headers);
+        this.mut = mut;
     }
 
     get(name: string): string | null {
+        const staged = this.mut?.getStaged?.();
+        if (staged && name in staged) return staged[name] ?? null;
         return this.h.get(name);
     }
 
     has(name: string): boolean {
+        const staged = this.mut?.getStaged?.();
+        if (staged && name in staged) return true;
         return this.h.has(name);
     }
 
@@ -110,15 +189,30 @@ export class ReadonlyHeaders {
     }
 
     entries(): IterableIterator<[string, string]> {
-        return this.h.entries();
+        const merged = new Headers(this.h);
+        const staged = this.mut?.getStaged?.();
+        if (staged) {
+            for (const [k, v] of Object.entries(staged)) merged.set(k, v);
+        }
+        return merged.entries();
     }
 
     keys(): IterableIterator<string> {
-        return this.h.keys();
+        const merged = new Headers(this.h);
+        const staged = this.mut?.getStaged?.();
+        if (staged) {
+            for (const [k, v] of Object.entries(staged)) merged.set(k, v);
+        }
+        return merged.keys();
     }
 
     values(): IterableIterator<string> {
-        return this.h.values();
+        const merged = new Headers(this.h);
+        const staged = this.mut?.getStaged?.();
+        if (staged) {
+            for (const [k, v] of Object.entries(staged)) merged.set(k, v);
+        }
+        return merged.values();
     }
 
     forEach(
@@ -136,7 +230,22 @@ export class ReadonlyHeaders {
     }
 
     [Symbol.iterator](): IterableIterator<[string, string]> {
-        return this.h[Symbol.iterator]();
+        return this.entries();
+    }
+
+    set(name: string, value: string): void {
+        if (!this.mut) throw new Error("headers().set is not available in this context");
+        this.mut.setHeader(name, value);
+    }
+
+    append(name: string, value: string): void {
+        if (!this.mut) throw new Error("headers().append is not available in this context");
+        this.mut.appendHeader(name, value);
+    }
+
+    delete(name: string): void {
+        if (!this.mut) throw new Error("headers().delete is not available in this context");
+        this.mut.deleteHeader(name);
     }
 }
 
@@ -147,18 +256,63 @@ export type LixnetRequest = Omit<Request, "headers"> & {
 };
 
 /** Used by the server only; not part of the public package API. */
-export function wrapLixnetRequest(request: Request): LixnetRequest {
+export function wrapLixnetRequest(
+    request: Request,
+    response: {
+        header: (name: string, value: string) => void;
+        deleteHeader: (name: string) => void;
+        cookie: (name: string, value: string, options?: any) => void;
+        deleteCookie: (name: string, options?: any) => void;
+        responseHeaders: Record<string, string>;
+        responseHeaderDeletes: Set<string>;
+        responseCookies: Record<
+            string,
+            { type: "value" | "delete"; value?: string; options?: unknown }
+        >;
+    }
+): LixnetRequest {
     const snapshot = new Headers(request.headers);
+    const cookieMut = {
+        setCookie: (name: string, value: string, options?: unknown) =>
+            response.cookie(name, value, options),
+        deleteCookie: (name: string, options?: unknown) =>
+            response.deleteCookie(name, options),
+        getStaged: () => response.responseCookies,
+    };
+    const headerMut = {
+        setHeader: (name: string, value: string) => response.header(name, value),
+        appendHeader: (name: string, value: string) => {
+            if (response.responseHeaderDeletes.has(name.toLowerCase())) {
+                response.responseHeaderDeletes.delete(name.toLowerCase());
+            }
+            const existing =
+                response.responseHeaders[name] ??
+                response.responseHeaders[name.toLowerCase()] ??
+                "";
+            response.header(name, existing ? `${existing}, ${value}` : value);
+        },
+        deleteHeader: (name: string) => response.deleteHeader(name),
+        getStaged: () => {
+            const out: Record<string, string> = { ...response.responseHeaders };
+            for (const k of response.responseHeaderDeletes) {
+                delete out[k];
+            }
+            return out;
+        },
+    };
     return new Proxy(request, {
         get(target, prop, receiver) {
             if (prop === "cookies") {
                 return function cookies() {
-                    return new ReadonlyRequestCookies(snapshot.get("cookie"));
+                    return new ReadonlyRequestCookies(
+                        snapshot.get("cookie"),
+                        cookieMut
+                    );
                 };
             }
             if (prop === "headers") {
                 return function headers() {
-                    return new ReadonlyHeaders(snapshot);
+                    return new ReadonlyHeaders(snapshot, headerMut);
                 };
             }
             return Reflect.get(target, prop, receiver);

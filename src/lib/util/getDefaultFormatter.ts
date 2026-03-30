@@ -9,13 +9,36 @@ export default function (defaultHeaders: Record<string, string>) {
         for (const [headerName, headerValue] of Object.entries(this.responseHeaders)) {
             headers.set(headerName, headerValue);
         }
+        for (const headerName of this.responseHeaderDeletes) {
+            headers.delete(headerName);
+        }
         for (const [cookieName, cookie] of Object.entries(this.responseCookies)) {
             if (cookie.type === "value") {
                 const opts = cookie.options ?? {};
-                headers.set('Set-Cookie', `${cookieName}=${cookie.value}; ${Object.entries(opts).map(([key, value]) => `${key}=${value}`).join('; ')}`);
+                //detect value escapes
+                if (cookie.value?.includes(";") || cookie.value?.includes("=") || cookie.value?.includes("\n") || cookie.value?.includes("\r")) {
+                    throw new Error("Cookie value contains invalid characters");
+                }
+                const parts: string[] = [`${cookieName}=${cookie.value ?? ""}`];
+                if (opts.domain) parts.push(`Domain=${opts.domain}`);
+                if (opts.path) parts.push(`Path=${opts.path}`);
+                if ("maxAge" in opts && typeof (opts as any).maxAge === "number") {
+                    parts.push(`Max-Age=${(opts as any).maxAge}`);
+                }
+                if (opts.httpOnly) parts.push("HttpOnly");
+                if (opts.secure) parts.push("Secure");
+                if (opts.sameSite) parts.push(`SameSite=${opts.sameSite}`);
+                headers.append("Set-Cookie", parts.join("; "));
             }
             else if (cookie.type === "delete") {
-                headers.set('Set-Cookie', `${cookieName}=; Max-Age=0; Path=/; HttpOnly; Secure; SameSite=Strict`);
+                const opts = (cookie.options ?? {}) as any;
+                const parts: string[] = [`${cookieName}=`,"Max-Age=0"];
+                parts.push(`Path=${opts.path ?? "/"}`);
+                if (opts.domain) parts.push(`Domain=${opts.domain}`);
+                if (opts.httpOnly) parts.push("HttpOnly");
+                if (opts.secure) parts.push("Secure");
+                if (opts.sameSite) parts.push(`SameSite=${opts.sameSite}`);
+                headers.append("Set-Cookie", parts.join("; "));
             }
             else {
                 throw new Error(`Unknown cookie type: ${cookie.type}`);
@@ -25,7 +48,7 @@ export default function (defaultHeaders: Record<string, string>) {
         return Response.json({
             data: this.responseData,
         }, {
-            status: 200,
+            status: this.responseCode ?? 200,
             headers: headers,
         });
     };
