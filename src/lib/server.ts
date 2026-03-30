@@ -6,11 +6,10 @@ import type {
     FunctionOutput,
     LXNServerHandler,
     LXN_ServerClient_EventType,
-    LXN_ServerClient_Request,
 } from "./types";
 import { LixnetResponse } from "./util/response";
 import defaultFormatter from "./util/formatter";
-import { wrapLixnetRequest } from "./util/request";
+import { LixnetRequest, wrapLixnetRequest } from "./util/request";
 
 type LXNServerEventInput<
     Events extends LXN_ServerClient_EventType,
@@ -18,7 +17,7 @@ type LXNServerEventInput<
 > = {
     event: TName;
     handler: LXNServerHandler<
-        FunctionInput<Events[TName]> & { request: LXN_ServerClient_Request },
+        FunctionInput<Events[TName]> & { request: LixnetRequest, response: LixnetResponse },
         FunctionOutput<Events[TName]>
     >;
     schema?: z.ZodSchema<any>;
@@ -108,7 +107,7 @@ export default class LixnetServer<Events extends LXN_ServerClient_EventType> {
                 : jsonData.input;
 
             try {
-                const newRequest: LXN_ServerClient_Request =
+                const newRequest: LixnetRequest =
                     wrapLixnetRequest(requestClone);
 
 
