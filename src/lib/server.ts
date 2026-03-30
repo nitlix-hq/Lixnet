@@ -8,8 +8,8 @@ import type {
     LXN_ServerClient_EventType,
 } from "./types";
 import { LixnetResponse } from "./util/response";
-import defaultFormatter from "./util/formatter";
 import { LixnetRequest, wrapLixnetRequest } from "./util/request";
+import getDefaultFormatter from "./util/getDefaultFormatter";
 
 type LXNServerEventInput<
     Events extends LXN_ServerClient_EventType,
@@ -34,14 +34,16 @@ export default class LixnetServer<Events extends LXN_ServerClient_EventType> {
         debugLog = false,
         logger,
         formatter,
+        defaultHeaders = {},
     }: {
         debugLog?: boolean;
         logger?: DebugLogger;
         formatter?: (this: LixnetResponse) => Response;
+        defaultHeaders?: Record<string, string>
     }) {
         this.debugLog = debugLog;
         logger ? (this.logger = logger) : "";
-        this.formatter = formatter ?? defaultFormatter;
+        this.formatter = formatter ?? getDefaultFormatter(defaultHeaders);
     }
 
     public on<K extends keyof Events & string>(
