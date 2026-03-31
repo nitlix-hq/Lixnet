@@ -1,3 +1,5 @@
+// With <3 by https://nitlix.com
+
 import LixnetServer from "./lib/server";
 import LixnetClient from "./lib/client";
 import LixnetPeer from "./lib/peer";

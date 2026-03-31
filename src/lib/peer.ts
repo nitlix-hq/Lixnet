@@ -13,8 +13,8 @@ type Caller<ThisToThereEvents extends Record<string, any>> = <
     input: PeerEventInput<ThisToThereEvents[K]>,
     options?: {
         callback:
-            | ((data: Awaited<ReturnType<ThisToThereEvents[K]>>) => any)
-            | null;
+        | ((data: Awaited<ReturnType<ThisToThereEvents[K]>>) => any)
+        | null;
     }
 ) => Promise<void>;
 

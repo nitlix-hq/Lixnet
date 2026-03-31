@@ -4,6 +4,7 @@ export default function (defaultHeaders: Record<string, string>) {
     function formatter(this: LixnetResponse) {
         const headers = new Headers({
             "Content-Type": "application/json",
+            "X-Server": "Lixnet",
             ...defaultHeaders,
         });
         for (const [headerName, headerValue] of Object.entries(this.responseHeaders)) {

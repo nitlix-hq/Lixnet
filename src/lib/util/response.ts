@@ -1,18 +1,13 @@
-export type CookieOptions = {
+export type CookieBaseOptions = {
     domain?: string;
     path?: string;
-    maxAge?: number;
     httpOnly?: boolean;
     secure?: boolean;
     sameSite?: 'lax' | 'strict' | 'none';
 };
 
-export type CookieDeleteOptions = {
-    domain?: string;
-    path?: string;
-    httpOnly?: boolean;
-    secure?: boolean;
-    sameSite?: 'lax' | 'strict' | 'none';
+export type CookieFullOptions = CookieBaseOptions & {
+    maxAge?: number;
 };
 
 export class LixnetResponse {
@@ -24,7 +19,7 @@ export class LixnetResponse {
     public responseCookies: Record<string, {
         type: "value" | "delete";
         value?: string;
-        options?: CookieOptions | CookieDeleteOptions;
+        options?: CookieFullOptions;
     }> = {};
 
     public constructor({ formatter }: { formatter: (this: LixnetResponse) => Response }) {
@@ -61,7 +56,7 @@ export class LixnetResponse {
         }
     }
 
-    public cookie(cookieName: string, cookieValue: string, cookieOptions?: CookieOptions): void {
+    public cookie(cookieName: string, cookieValue: string, cookieOptions?: CookieFullOptions): void {
         this.responseCookies[cookieName] = {
             type: "value",
             value: cookieValue,
@@ -69,7 +64,7 @@ export class LixnetResponse {
         };
     }
 
-    public deleteCookie(cookieName: string, options?: CookieDeleteOptions): void {
+    public deleteCookie(cookieName: string, options?: CookieBaseOptions): void {
         this.responseCookies[cookieName] = {
             type: "delete",
             options,
