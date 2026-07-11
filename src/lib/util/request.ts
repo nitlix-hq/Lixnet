@@ -319,7 +319,11 @@ export function wrapLixnetRequest(
                     return new LixnetHeaders(snapshot, headerMut);
                 };
             }
-            return Reflect.get(target, prop, receiver);
+            // `receiver` here is this Proxy itself, not `target`. Native accessor properties
+            // (e.g. Workers' `Request.prototype.cf`) are branded getters that check `this` is
+            // the real internal object — invoking them with the Proxy as receiver throws
+            // "Illegal invocation". Always dispatch getters against the real `target`.
+            return Reflect.get(target, prop, target);
         },
     }) as unknown as LixnetRequest;
 }
